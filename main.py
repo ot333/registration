@@ -197,6 +197,19 @@ def login(cursor):
             print("Invalid Input. Try again\n")
 
 
+
+
+
+
+
+
+
+
+#############################
+#         Login GUI
+#############################
+
+
 def login_gui(sql_handle):
     def handle_login():
         login_type = login_type_var.get().lower()
@@ -208,6 +221,53 @@ def login_gui(sql_handle):
             return
 
         cursor = sql_handle.cursor()
+
+        if login_type == 'admin':
+            cursor.execute("SELECT NAME, SURNAME FROM ADMIN")
+        elif login_type == 'instructor':
+            cursor.execute("SELECT NAME, SURNAME FROM INSTRUCTOR")
+            rows = cursor.fetchall()
+            for row in rows:
+                col1 = row[0]
+                col2 = row[1]
+                if col1.lower() == username.lower() and col2.lower() == password.lower():
+                    messagebox.showinfo("Success", f"Hello {col1} {col2}. Welcome to Leopard Web.")
+                    user = Instructor(col1, col2)
+                    instructor_gui(sql_handle, user)  # Call the instructor GUI function
+                    return
+        elif login_type == 'student':
+            cursor.execute("SELECT NAME, SURNAME FROM STUDENT")
+            rows = cursor.fetchall()
+            for row in rows:
+                col1 = row[0]
+                col2 = row[1]
+                if col1.lower() == username.lower() and col2.lower() == password.lower():
+                    messagebox.showinfo("Success", f"Hello {col1} {col2}. Welcome to Leopard Web.")
+                    user = Student(col1, col2)
+                    student_gui(sql_handle, user)  # Call the student GUI function
+                    return
+        else:
+            messagebox.showerror("Error", "Invalid login type.")
+            return
+
+        messagebox.showerror("Error", "Invalid username or password.")
+
+    
+    
+    
+    
+    '''
+    def handle_login():
+        login_type = login_type_var.get().lower()
+        username = username_entry.get().strip()
+        password = password_entry.get().strip()
+
+        if not username or not password:
+            messagebox.showerror("Error", "Username and password cannot be empty.")
+            return
+
+        cursor = connect().cursor()
+
         if login_type == 'admin':
             cursor.execute("SELECT NAME, SURNAME FROM ADMIN")
         elif login_type == 'instructor':
@@ -226,16 +286,18 @@ def login_gui(sql_handle):
                 messagebox.showinfo("Success", f"Hello {col1} {col2}. Welcome to Leopard Web.")
                 if login_type == 'admin':
                     user = Admin(col1, col2)
+                    # Add admin GUI functionality if needed
                 elif login_type == 'instructor':
                     user = Instructor(col1, col2)
+                    instructor_gui(cursor, user)  # Call instructor GUI function
                 elif login_type == 'student':
                     user = Student(col1, col2)
-
-                root.destroy()
-                student_gui(sql_handle, user, root)
+                    student_gui(cursor, user)  # Call student GUI function
+                root.destroy()  # Close login window
                 return
 
         messagebox.showerror("Error", "Invalid username or password.")
+'''
 
     root = tk.Tk()
     root.title("Leopard Web Login")
@@ -269,7 +331,18 @@ def login_gui(sql_handle):
     root.mainloop()
 
 
-def student_gui(sql_handle, student, root):
+
+
+
+
+
+
+#############################
+#        Student GUI
+#############################
+
+
+def student_gui(sql_handle, student):#, root):
     def handle_add_remove_course():
         crn = crn_entry.get().strip()
         action = add_remove_var.get()
@@ -361,6 +434,7 @@ def student_gui(sql_handle, student, root):
                                         "Year: {}, Credits: {}, Instructor: {}\n".format(
                 course[0], course[1], course[2], course[3], course[4], course[5], course[6], course[7], course[8]))
 
+    #root.destroy()
     root = tk.Tk()
     root.title("Leopard Web - Student")
     root.geometry("2400x1200")
@@ -416,6 +490,135 @@ def student_gui(sql_handle, student, root):
     root.mainloop()
     
     
+    
+    
+    
+    
+    
+    
+#############################
+#      Instructor GUI
+#############################
+    
+def instructor_gui(cursor, user):
+    def handle_search_course(cursor, search_query):
+        if not search_query:
+            cursor.execute("SELECT CRN, Title, department, time, days, semester, year, credits, instructor FROM COURSE")
+        else:
+            cursor.execute("SELECT CRN, Title, department, time, days, semester, year, credits, instructor FROM COURSE "
+                           "WHERE Title LIKE ? OR department LIKE ? OR instructor LIKE ?",
+                           ('%'+search_query+'%', '%'+search_query+'%', '%'+search_query+'%'))
+        courses = cursor.fetchall()
+
+        if not courses:
+            messagebox.showinfo("Search Result", "No courses found.")
+        else:
+            search_result_window = tk.Toplevel()
+            search_result_window.title("Search Result")
+            search_result_window.geometry("800x400")
+
+            search_result_label = tk.Label(search_result_window, text="Search Result", font=("Helvetica", 16, "bold"))
+            search_result_label.pack()
+
+            search_result_listbox = tk.Listbox(search_result_window, width=100)
+            search_result_listbox.pack()
+
+            for course in courses:
+                course_info = "CRN: {}, Title: {}, Department: {}, Time: {}, Days: {}, Semester: {}, Year: {}, Credits: {}, Instructor: {}".format(
+                    course[0], course[1], course[2], course[3], course[4], course[5], course[6], course[7], course[8])
+                search_result_listbox.insert(tk.END, course_info)
+    
+   
+    def handle_print_schedule(cursor, user):
+        cursor.execute("SELECT CRN, Title, department, time, days, semester, year, credits, instructor FROM COURSE "
+                       "WHERE instructor = '{}'".format(user.firstname))
+        courses = cursor.fetchall()
+
+        if not courses:
+            messagebox.showinfo("Schedule", "You are not currently teaching any courses.")
+        else:
+            schedule_window = tk.Toplevel()
+            schedule_window.title("Teaching Schedule")
+            schedule_window.geometry("800x400")
+
+            schedule_label = tk.Label(schedule_window, text="Teaching Schedule", font=("Helvetica", 16, "bold"))
+            schedule_label.pack()
+
+            schedule_listbox = tk.Listbox(schedule_window, width=100)
+            schedule_listbox.pack()
+
+            for course in courses:
+                course_info = "CRN: {}, Title: {}, Department: {}, Time: {}, Days: {}, Semester: {}, Year: {}, Credits: {}, Instructor: {}".format(
+                    course[0], course[1], course[2], course[3], course[4], course[5], course[6], course[7], course[8])
+                schedule_listbox.insert(tk.END, course_info)
+
+
+    def handle_print_roster(cursor, user):
+        crn = input("Enter CRN of the course to print the roster: ")
+        cursor.execute("SELECT NAME FROM STUDENT WHERE CLASSES LIKE '%{}%'".format(crn))
+        students = cursor.fetchall()
+
+        if not students:
+            print("No students are enrolled in the course with CRN: {}".format(crn))
+        else:
+            print("Roster for the course with CRN {}: ".format(crn))
+            for student in students:
+                print(student[0])
+                
+
+    def handle_logout():
+        root.destroy()
+        login_gui(cursor)
+
+    #root.destroy()
+    root = tk.Tk()
+    root.title("Leopard Web Instructor")
+    root.geometry("800x600")
+
+    welcome_label = tk.Label(root, text=f"Welcome, {user.firstname} {user.lastname}. "
+                                        "You are logged in as an Instructor.")
+    welcome_label.pack(pady=10)
+
+    search_frame = tk.Frame(root)
+    search_frame.pack(pady=10)
+
+    search_label = tk.Label(search_frame, text="Search Courses:")
+    search_label.pack(side=tk.LEFT)
+
+    search_entry = tk.Entry(search_frame)
+    search_entry.pack(side=tk.LEFT)
+
+    search_button = tk.Button(search_frame, text="Search", command=handle_search_course)
+    search_button.pack(side=tk.LEFT)
+
+    course_list = tk.Listbox(root, width=100)
+    course_list.pack(pady=10)
+
+    print_schedule_button = tk.Button(root, text="Print Teaching Schedule", command=handle_print_schedule)
+    print_schedule_button.pack()
+
+    roster_frame = tk.Frame(root)
+    roster_frame.pack(pady=10)
+
+    crn_label = tk.Label(roster_frame, text="CRN:")
+    crn_label.pack(side=tk.LEFT)
+
+    crn_entry = tk.Entry(roster_frame)
+    crn_entry.pack(side=tk.LEFT)
+
+    print_roster_button = tk.Button(roster_frame, text="Print Roster", command=handle_print_roster)
+    print_roster_button.pack(side=tk.LEFT)
+
+    student_list = tk.Listbox(root, width=100)
+    student_list.pack(pady=10)
+
+    logout_button = tk.Button(root, text="Logout", command=handle_logout)
+    logout_button.pack()
+
+    root.mainloop()
+
+    
+    
 def logout(root):
     root.destroy()
     main()
@@ -459,3 +662,4 @@ def main():
 
 
 main()
+
